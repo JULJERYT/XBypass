@@ -1,4 +1,7 @@
-# XBypass
+<div align="center">
+  <img src="src/icon128.png" width="80" height="80">
+  <h1>XBypass</h1>
+</div>
 
 A Chrome/Edge/Brave/Opera/Vivaldi/Helium/Arc extension that bypasses X's age restriction gate.
 
