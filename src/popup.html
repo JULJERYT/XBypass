@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>XBypass</title>
+  <style>
+    /* css vibecoded - i couldnt make a good design */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      width: 300px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f0f0f;
+      color: #e7e7e7;
+      padding: 16px;
+      padding-bottom: 12px;
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .title {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: #fff;
+    }
+
+    /* ── Status Badge ── */
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      transition: background 0.3s;
+    }
+    .status-dot.active   { background: #00e676; box-shadow: 0 0 6px #00e676; }
+    .status-dot.error    { background: #ff3d3d; box-shadow: 0 0 6px #ff3d3d; }
+    .status-dot.disabled { background: #555; }
+
+    .status-label {
+      font-size: 12px;
+      color: #aaa;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    /* ── Toggle Row ── */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #1a1a1a;
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-bottom: 14px;
+    }
+
+    .toggle-label {
+      font-size: 13px;
+      color: #ccc;
+      transition: color 0.2s;
+    }
+    .toggle-label.pending {
+      font-size: 11px;
+      color: #ffb300;
+      letter-spacing: 0.3px;
+    }
+
+    /* iOS-style switch (Reused for both toggles) */
+    .switch {
+      position: relative;
+      width: 42px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute;
+      inset: 0;
+      background: #333;
+      border-radius: 24px;
+      cursor: pointer;
+      transition: background 0.25s;
+    }
+    .slider::before {
+      content: '';
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      left: 3px;
+      top: 3px;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform 0.25s;
+    }
+    .switch input:checked + .slider { background: #00e676; }
+    .switch input:checked + .slider::before { transform: translateX(18px); }
+
+    /* ── Dev Sections (Hooks + Log) ── */
+    .dev-section {
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      transition: max-height 0.3s ease, opacity 0.25s ease;
+    }
+    .dev-section.visible {
+      max-height: 400px;
+      opacity: 1;
+    }
+
+    /* ── Hooks Info ── */
+    .hooks {
+      background: #1a1a1a;
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-bottom: 14px;
+    }
+    .hooks-title {
+      font-size: 11px;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 8px;
+    }
+    .hook-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 4px;
+    }
+    .hook-item:last-child { margin-bottom: 0; }
+    .hook-bullet {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #00e676;
+      flex-shrink: 0;
+    }
+    .hook-bullet.off { background: #444; }
+
+    /* ── Log Panel ── */
+    .log-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .log-title {
+      font-size: 11px;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+    .clear-btn {
+      font-size: 10px;
+      color: #444;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 4px;
+      transition: color 0.2s;
+    }
+    .clear-btn:hover { color: #888; }
+
+    .log-box {
+      background: #111;
+      border: 1px solid #222;
+      border-radius: 8px;
+      height: 130px;
+      overflow-y: auto;
+      padding: 8px;
+      font-size: 11px;
+      font-family: 'Menlo', 'Consolas', monospace;
+      color: #666;
+      scrollbar-width: thin;
+      scrollbar-color: #333 transparent;
+    }
+    .log-box::-webkit-scrollbar { width: 4px; }
+    .log-box::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+
+    .log-entry {
+      margin-bottom: 4px;
+      line-height: 1.4;
+      word-break: break-all;
+    }
+    .log-entry:last-child { margin-bottom: 0; }
+    .log-time { color: #444; margin-right: 4px; }
+    .log-entry.err .log-msg { color: #ff6b6b; }
+    .log-entry.ok  .log-msg { color: #aaa; }
+
+    .log-empty {
+      color: #333;
+      font-style: italic;
+    }
+
+    /* ── Footer / Dev Mode Toggle ── */
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 7px;
+      margin-top: 12px;
+    }
+
+    .credits {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+    .credits span {
+      font-size: 9px;
+      color: #333;
+      letter-spacing: 0.3px;
+    }
+    .credits a {
+      font-size: 9px;
+      color: #3a3a3a;
+      text-decoration: none;
+      letter-spacing: 0.3px;
+      transition: color 0.2s;
+    }
+    .credits a:hover { color: #666; }
+
+    .footer-right {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .dev-label {
+      font-size: 10px;
+      color: #444;
+      text-transform: uppercase;
+      letter-spacing: 0.9px;
+      transition: color 0.25s;
+    }
+    .dev-label.on { color: #888; }
+
+    /* ── Notice ── */
+    .notice {
+      font-size: 10px;
+      color: #444;
+      line-height: 1.5;
+      margin-bottom: 14px;
+      padding: 0 2px;
+    }
+    .notice strong { color: #555; font-weight: 600; }
+    .notice a { color: #555; text-decoration: none; transition: color 0.2s; }
+    .notice a:hover { color: #888; }
+
+    /* Smaller switch for dev mode */
+    .switch-sm {
+      position: relative;
+      width: 32px;
+      height: 18px;
+    }
+    .switch-sm input { opacity: 0; width: 0; height: 0; }
+    .switch-sm .slider { border-radius: 18px; }
+    .switch-sm .slider::before {
+      width: 12px;
+      height: 12px;
+      left: 3px;
+      top: 3px;
+    }
+    .switch-sm input:checked + .slider { background: #ffb300; }
+    .switch-sm input:checked + .slider::before { transform: translateX(14px); }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <span class="title">XBypass</span>
+  </div>
+
+  <div class="status-row">
+    <div class="status-dot" id="statusDot"></div>
+    <span class="status-label" id="statusLabel">-</span>
+  </div>
+
+  <div class="toggle-row">
+    <span class="toggle-label" id="toggleLabel">Bypass enabled</span>
+    <label class="switch">
+      <input type="checkbox" id="toggleSwitch" />
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <p class="notice">Doesn't work? Try refreshing by <strong>Ctrl+Shift+R</strong>.<br>Still doesn't work? Email me: <a href="mailto:x@jul.rip">x@jul.rip</a></p>
+
+  <!-- dev-only sections -->
+  <div class="dev-section" id="devSection">
+    <div class="hooks" id="hooksPanel">
+      <div class="hooks-title">Active hooks</div>
+      <div class="hook-item">
+        <div class="hook-bullet" id="h1"></div>
+        <span>__INITIAL_STATE__</span>
+      </div>
+      <div class="hook-item">
+        <div class="hook-bullet" id="h2"></div>
+        <span>Object.assign</span>
+      </div>
+      <div class="hook-item">
+        <div class="hook-bullet" id="h3"></div>
+        <span>JSON.parse</span>
+      </div>
+    </div>
+
+    <div class="log-header">
+      <span class="log-title">Log</span>
+      <button class="clear-btn" id="clearBtn">clear</button>
+    </div>
+    <div class="log-box" id="logBox">
+      <span class="log-empty">No entries yet.</span>
+    </div>
+  </div>
+
+  <!-- footer: credits + dev mode switch -->
+  <div class="footer">
+    <div class="credits">
+      <span>made by jul</span>
+      <a href="https://jul.rip" target="_blank">jul.rip</a>
+    </div>
+    <div class="footer-right">
+      <span class="dev-label" id="devLabel">developer mode</span>
+      <label class="switch switch-sm">
+        <input type="checkbox" id="devSwitch" />
+        <span class="slider"></span>
+      </label>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
